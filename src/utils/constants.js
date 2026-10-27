@@ -1,5 +1,5 @@
 // Central place for app-wide constants and env config.
-export const APP_NAME = import.meta.env.VITE_APP_NAME || 'React Starter';
+export const APP_NAME = import.meta.env.VITE_APP_NAME || "Xavor's Devops Center";
 export const API_URL = import.meta.env.VITE_API_URL || '';
 export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
 
