@@ -253,7 +253,7 @@ export default function HomePage() {
       <style>{CSS}</style>
 
       <header className="tl-hero">
-        <h1>CI/CD template library</h1>
+        <h1>Xavor's CI/CD Template Library</h1>
         <p>
           Ready-to-use pipeline workflows. Pick a template, review the YAML, and drop it
           into your repository.
