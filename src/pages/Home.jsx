@@ -1,45 +1,422 @@
-import { Link } from 'react-router-dom';
-import { Boxes, Lock, Plug, Zap } from 'lucide-react';
-import { ROUTES } from '@/utils/constants';
+import { useMemo, useState, useEffect } from "react";
 
-const FEATURES = [
-  { icon: Zap, title: 'Vite + React', text: 'Instant dev server and fast production builds.' },
-  { icon: Lock, title: 'Auth built in', text: 'Context-based auth, protected routes and role checks.' },
-  { icon: Plug, title: 'API layer', text: 'One Fetch wrapper handles base URL, tokens, refresh and errors.' },
-  { icon: Boxes, title: 'Clear structure', text: 'Pages, layouts, components, hooks and api each have a home.' },
+/* ------------------------------------------------------------------
+   Template data — add new templates to this array.
+   Note: GitHub expressions are written as \${{ ... }} so JS doesn't
+   treat them as template-literal interpolation.
+------------------------------------------------------------------- */
+const TEMPLATES = [
+  {
+    id: "azure-webapps-node",
+    title: "Deploy React App to Azure Web App",
+    provider: "Microsoft Azure",
+    category: "Deployment",
+    platform: "GitHub Actions",
+    fileName: "azure-webapps-node.yml",
+    description:
+      "Build a React (Node.js) project with npm and deploy the dist output to an Azure Web App using a publish profile.",
+    tags: ["React", "Node 24", "Azure App Service"],
+    secrets: ["DEVOPS_DEMO_AZURE_WEBAPP_PUBLISH_PROFILE"],
+    yaml: `name: Build and Deploy React App to Azure
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  AZURE_WEBAPP_NAME: 'devopsdemo'
+  NODE_VERSION: '24.x'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: \${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build React application
+        run: npm run build
+
+      - name: Upload deployment files
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-app
+          path: |
+            package.json
+            package-lock.json
+            dist/
+          include-hidden-files: true
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    environment:
+      name: Development
+      url: \${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+      - name: Download deployment artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: react-app
+          path: .
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: \${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: \${{ secrets.DEVOPS_DEMO_AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .
+`,
+  },
 ];
 
-export default function Home() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-20">
-      <section className="max-w-2xl">
-        <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">Starter template</span>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-          Your app is running.
-        </h1>
-        <p className="mt-4 text-lg text-slate-600">
-          This is the baseline React project. Edit <code className="rounded bg-slate-100 px-1.5 py-0.5 text-sm">src/pages/Home.jsx</code> and
-          the page reloads instantly. Log in with any email and password to see the protected dashboard.
-        </p>
-        <div className="mt-8 flex gap-3">
-          <Link to={ROUTES.LOGIN} className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700">
-            Try the login flow
-          </Link>
-          <a href="#features" className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-            What's included
-          </a>
-        </div>
-      </section>
+const CATEGORY_COLORS = {
+  Deployment: "#0969da",
+  "Continuous integration": "#1a7f37",
+  Security: "#cf222e",
+  Automation: "#8250df",
+};
 
-      <section id="features" className="mt-20 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {FEATURES.map(({ icon: Icon, title, text }) => (
-          <div key={title} className="rounded-xl border border-slate-200 bg-white p-5">
-            <Icon className="text-brand-600" size={22} />
-            <h3 className="mt-3 font-semibold text-slate-900">{title}</h3>
-            <p className="mt-1 text-sm text-slate-600">{text}</p>
+/* Generic cloud icon (provider-neutral) */
+function CloudIcon({ color = "#0969da" }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.4 9.2 4.5 4.5 0 0 0 7 18Z"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function TemplateCard({ template, onConfigure }) {
+  const dot = CATEGORY_COLORS[template.category] || "#6e7781";
+  return (
+    <article className="tl-card">
+      <div className="tl-card-head">
+        <div>
+          <h3 className="tl-card-title">{template.title}</h3>
+          <p className="tl-card-by">By {template.provider}</p>
+        </div>
+        <span className="tl-card-icon">
+          <CloudIcon color={dot} />
+        </span>
+      </div>
+      <p className="tl-card-desc">{template.description}</p>
+      <div className="tl-card-foot">
+        <button className="tl-btn" onClick={() => onConfigure(template)}>
+          Configure
+        </button>
+        <span className="tl-cat">
+          {template.category}
+          <span className="tl-dot" style={{ background: dot }} />
+        </span>
+      </div>
+    </article>
+  );
+}
+
+function TemplateDrawer({ template, onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(template.yaml);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const download = () => {
+    const blob = new Blob([template.yaml], { type: "text/yaml" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = template.fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="tl-overlay" onClick={onClose}>
+      <aside
+        className="tl-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label={template.title}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="tl-drawer-head">
+          <div>
+            <h2>{template.title}</h2>
+            <p className="tl-card-by">
+              By {template.provider} · {template.platform}
+            </p>
           </div>
-        ))}
-      </section>
+          <button className="tl-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </header>
+
+        <p className="tl-card-desc">{template.description}</p>
+
+        <div className="tl-tags">
+          {template.tags.map((t) => (
+            <span key={t} className="tl-tag">{t}</span>
+          ))}
+        </div>
+
+        {template.secrets?.length > 0 && (
+          <div className="tl-note">
+            <strong>Required repository secrets</strong>
+            <ul>
+              {template.secrets.map((s) => (
+                <li key={s}><code>{s}</code></li>
+              ))}
+            </ul>
+            <p>
+              Save this file as <code>.github/workflows/{template.fileName}</code> in your repo.
+            </p>
+          </div>
+        )}
+
+        <div className="tl-code-bar">
+          <span>{template.fileName}</span>
+          <div className="tl-code-actions">
+            <button className="tl-btn" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+            <button className="tl-btn tl-btn-primary" onClick={download}>Download</button>
+          </div>
+        </div>
+        <pre className="tl-code"><code>{template.yaml}</code></pre>
+      </aside>
     </div>
   );
 }
+
+export default function HomePage() {
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All");
+  const [selected, setSelected] = useState(null);
+
+  const categories = useMemo(
+    () => ["All", ...new Set(TEMPLATES.map((t) => t.category))],
+    []
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return TEMPLATES.filter((t) => {
+      const inCat = category === "All" || t.category === category;
+      const inText =
+        !q ||
+        [t.title, t.provider, t.description, ...t.tags].join(" ").toLowerCase().includes(q);
+      return inCat && inText;
+    });
+  }, [query, category]);
+
+  const grouped = useMemo(() => {
+    return filtered.reduce((acc, t) => {
+      (acc[t.category] ||= []).push(t);
+      return acc;
+    }, {});
+  }, [filtered]);
+
+  return (
+    <div className="tl-page">
+      <style>{CSS}</style>
+
+      <header className="tl-hero">
+        <h1>CI/CD template library</h1>
+        <p>
+          Ready-to-use pipeline workflows. Pick a template, review the YAML, and drop it
+          into your repository.
+        </p>
+        <div className="tl-controls">
+          <input
+            className="tl-search"
+            type="search"
+            placeholder="Search templates"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search templates"
+          />
+          <div className="tl-filters" role="tablist">
+            {categories.map((c) => (
+              <button
+                key={c}
+                role="tab"
+                aria-selected={category === c}
+                className={`tl-filter ${category === c ? "is-active" : ""}`}
+                onClick={() => setCategory(c)}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <main className="tl-main">
+        {Object.keys(grouped).length === 0 && (
+          <p className="tl-empty">No templates match “{query}”. Try a different search term.</p>
+        )}
+
+        {Object.entries(grouped).map(([cat, items]) => (
+          <section key={cat} className="tl-section">
+            <div className="tl-section-head">
+              <h2>{cat}</h2>
+              <span className="tl-count">{items.length} template{items.length > 1 ? "s" : ""}</span>
+            </div>
+            <div className="tl-grid">
+              {items.map((t) => (
+                <TemplateCard key={t.id} template={t} onConfigure={setSelected} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </main>
+
+      {selected && <TemplateDrawer template={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+const CSS = `
+.tl-page {
+  --bg: #ffffff; --surface: #ffffff; --subtle: #f6f8fa; --border: #d0d7de;
+  --text: #1f2328; --muted: #59636e; --link: #0969da; --primary: #1f883d;
+  --code-bg: #f6f8fa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+}
+@media (prefers-color-scheme: dark) {
+  .tl-page {
+    --bg: #0d1117; --surface: #0d1117; --subtle: #151b23; --border: #3d444d;
+    --text: #f0f6fc; --muted: #9198a1; --link: #4493f8; --primary: #238636;
+    --code-bg: #151b23;
+  }
+}
+.tl-page *, .tl-page *::before, .tl-page *::after { box-sizing: border-box; }
+
+.tl-hero { max-width: 1200px; margin: 0 auto; padding: 48px 24px 8px; }
+.tl-hero h1 { font-size: 32px; font-weight: 600; margin: 0 0 8px; }
+.tl-hero p { color: var(--muted); font-size: 16px; margin: 0; max-width: 60ch; line-height: 1.5; }
+
+.tl-controls { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; align-items: center; }
+.tl-search {
+  flex: 1 1 280px; max-width: 420px; padding: 7px 12px; font-size: 14px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text);
+}
+.tl-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.tl-filter {
+  padding: 5px 12px; font-size: 13px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+.tl-filter.is-active { background: var(--link); border-color: var(--link); color: #fff; }
+
+.tl-main { max-width: 1200px; margin: 0 auto; padding: 16px 24px 64px; }
+.tl-section { margin-top: 24px; }
+.tl-section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
+.tl-section-head h2 { font-size: 24px; font-weight: 600; margin: 0; }
+.tl-count { color: var(--muted); font-size: 14px; }
+
+.tl-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+.tl-card {
+  display: flex; flex-direction: column; min-height: 230px; padding: 24px 30px;
+  border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+}
+.tl-card-head { display: flex; justify-content: space-between; gap: 12px; }
+.tl-card-title { font-size: 18px; font-weight: 600; margin: 0; line-height: 1.4; }
+.tl-card-by { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
+.tl-card-icon {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface); box-shadow: 0 1px 3px rgba(31,35,40,.12), 0 0 0 1px rgba(31,35,40,.04);
+}
+.tl-card-desc { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 14px 0 20px; }
+.tl-card-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
+.tl-cat { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
+.tl-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+
+.tl-btn {
+  padding: 5px 15px; font-size: 14px; font-weight: 600; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--subtle); color: var(--text);
+}
+.tl-btn:hover { filter: brightness(0.97); }
+.tl-btn-primary { background: var(--primary); border-color: transparent; color: #fff; }
+.tl-btn:focus-visible, .tl-filter:focus-visible, .tl-search:focus-visible, .tl-close:focus-visible {
+  outline: 2px solid var(--link); outline-offset: 2px;
+}
+
+.tl-empty { color: var(--muted); padding: 40px 0; }
+
+.tl-overlay {
+  position: fixed; inset: 0; background: rgba(1,4,9,.5); display: flex; justify-content: flex-end; z-index: 50;
+}
+.tl-drawer {
+  width: min(720px, 100%); height: 100%; overflow-y: auto; padding: 28px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  animation: tl-slide .2s ease-out;
+}
+@keyframes tl-slide { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tl-drawer { animation: none; } }
+.tl-drawer-head { display: flex; justify-content: space-between; gap: 16px; }
+.tl-drawer-head h2 { margin: 0; font-size: 22px; font-weight: 600; }
+.tl-close { background: none; border: 0; color: var(--muted); font-size: 18px; cursor: pointer; height: 32px; width: 32px; border-radius: 6px; }
+
+.tl-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.tl-tag { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+
+.tl-note {
+  border: 1px solid var(--border); background: var(--subtle); border-radius: 6px;
+  padding: 12px 16px; font-size: 14px; margin-bottom: 16px;
+}
+.tl-note ul { margin: 6px 0; padding-left: 18px; }
+.tl-note p { margin: 6px 0 0; color: var(--muted); }
+.tl-note code, .tl-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.tl-note code { font-size: 12px; }
+
+.tl-code-bar {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px; border: 1px solid var(--border); border-bottom: 0; border-radius: 6px 6px 0 0;
+  background: var(--subtle); font-size: 13px; font-weight: 600;
+}
+.tl-code-actions { display: flex; gap: 8px; }
+.tl-code {
+  margin: 0; padding: 16px; font-size: 12.5px; line-height: 1.55; overflow-x: auto;
+  background: var(--code-bg); border: 1px solid var(--border); border-radius: 0 0 6px 6px;
+}
+
+@media (max-width: 600px) {
+  .tl-hero { padding-top: 32px; }
+  .tl-hero h1 { font-size: 26px; }
+  .tl-card { padding: 20px; }
+}
+`;
