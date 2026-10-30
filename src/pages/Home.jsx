@@ -113,7 +113,7 @@ function CloudIcon({ color = "#0969da" }) {
 }
 
 function TemplateCard({ template, onConfigure, onOpenDoc }) {
-  const dot = CATEGORY_COLORS[template.category] || "#6e7781";
+  const iconColor = CATEGORY_COLORS[template.category] || "#6e7781";
   return (
     <article className="tl-card">
       <div className="tl-card-head">
@@ -122,7 +122,7 @@ function TemplateCard({ template, onConfigure, onOpenDoc }) {
           <p className="tl-card-by">By {template.provider}</p>
         </div>
         <span className="tl-card-icon">
-          <CloudIcon color={dot} />
+          <CloudIcon color={iconColor} />
         </span>
       </div>
       <p className="tl-card-desc">{template.description}</p>
@@ -137,7 +137,6 @@ function TemplateCard({ template, onConfigure, onOpenDoc }) {
             </button>
           )}
         </div>
-        <span className="tl-dot" style={{ background: dot }} title={template.category} />
       </div>
     </article>
   );
@@ -450,7 +449,7 @@ const CSS = `
   background: var(--surface); box-shadow: 0 1px 3px rgba(31,35,40,.12), 0 0 0 1px rgba(31,35,40,.04);
 }
 .tl-card-desc { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 14px 0 20px; }
-.tl-card-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tl-card-foot { margin-top: auto; display: flex; align-items: center; }
 .tl-cat { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
 .tl-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 
@@ -503,7 +502,7 @@ const CSS = `
   background: var(--code-bg); border: 1px solid var(--border); border-radius: 0 0 6px 6px;
 }
 
-.tl-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tl-card-actions { display: flex; flex-wrap: nowrap; gap: 8px; }
 a.tl-btn { text-decoration: none; display: inline-flex; align-items: center; }
 
 .tl-doc {
