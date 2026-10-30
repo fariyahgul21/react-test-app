@@ -127,20 +127,17 @@ function TemplateCard({ template, onConfigure, onOpenDoc }) {
       </div>
       <p className="tl-card-desc">{template.description}</p>
       <div className="tl-card-foot">
-        <button className="tl-btn" onClick={() => onConfigure(template)}>
-          Configure
-        </button>
-        {template.docUrl ? (
-          <button className="tl-cat tl-doc-link" onClick={() => onOpenDoc(template)}>
-            Documentation
-            <span className="tl-dot" style={{ background: dot }} />
+        <div className="tl-card-actions">
+          <button className="tl-btn" onClick={() => onConfigure(template)}>
+            Configure
           </button>
-        ) : (
-          <span className="tl-cat">
-            Documentation
-            <span className="tl-dot" style={{ background: "#8c959f" }} />
-          </span>
-        )}
+          {template.docUrl && (
+            <button className="tl-btn" onClick={() => onOpenDoc(template)}>
+              Documentation
+            </button>
+          )}
+        </div>
+        <span className="tl-dot" style={{ background: dot }} title={template.category} />
       </div>
     </article>
   );
@@ -264,7 +261,7 @@ function DocViewer({ template, onClose }) {
   return (
     <div className="tl-overlay" onClick={onClose}>
       <aside
-        className="tl-drawer tl-drawer-wide"
+        className="tl-drawer"
         role="dialog"
         aria-modal="true"
         aria-label={template.docTitle || template.title}
@@ -273,23 +270,33 @@ function DocViewer({ template, onClose }) {
         <header className="tl-drawer-head">
           <div>
             <h2>{template.docTitle || template.title}</h2>
-            <p className="tl-card-by">Documentation · {template.provider}</p>
+            <p className="tl-card-by">
+              By {template.provider} · Documentation
+            </p>
           </div>
-          <div className="tl-code-actions">
-            <a className="tl-btn" href={template.docUrl} download>Download .docx</a>
-            <button className="tl-close" onClick={onClose} aria-label="Close">✕</button>
-          </div>
+          <button className="tl-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
         </header>
 
-        {status === "loading" && <p className="tl-empty">Loading document…</p>}
-        {status === "error" && (
-          <p className="tl-empty">
-            The document couldn’t be loaded. Check that it exists at <code>{template.docUrl}</code>.
-          </p>
-        )}
-        {status === "ready" && (
-          <div className="tl-doc" dangerouslySetInnerHTML={{ __html: html }} />
-        )}
+        <div className="tl-code-bar">
+          <span>{template.docUrl.split("/").pop()}</span>
+          <div className="tl-code-actions">
+            <a className="tl-btn tl-btn-primary" href={template.docUrl} download>
+              Download
+            </a>
+          </div>
+        </div>
+
+        <div className="tl-doc">
+          {status === "loading" && <p className="tl-doc-msg">Loading document…</p>}
+          {status === "error" && (
+            <p className="tl-doc-msg">
+              The document couldn’t be loaded. Check that it exists at <code>{template.docUrl}</code>.
+            </p>
+          )}
+          {status === "ready" && <div dangerouslySetInnerHTML={{ __html: html }} />}
+        </div>
       </aside>
     </div>
   );
@@ -443,7 +450,7 @@ const CSS = `
   background: var(--surface); box-shadow: 0 1px 3px rgba(31,35,40,.12), 0 0 0 1px rgba(31,35,40,.04);
 }
 .tl-card-desc { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 14px 0 20px; }
-.tl-card-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; }
+.tl-card-foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .tl-cat { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
 .tl-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 
@@ -496,15 +503,14 @@ const CSS = `
   background: var(--code-bg); border: 1px solid var(--border); border-radius: 0 0 6px 6px;
 }
 
-.tl-doc-link {
-  background: none; border: 0; padding: 4px 0; cursor: pointer; font: inherit;
-}
-.tl-doc-link:hover { color: var(--link); text-decoration: underline; }
-.tl-doc-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+.tl-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 a.tl-btn { text-decoration: none; display: inline-flex; align-items: center; }
 
-.tl-drawer-wide { width: min(900px, 100%); }
-.tl-doc { margin-top: 20px; font-size: 15px; line-height: 1.65; max-width: 75ch; }
+.tl-doc {
+  font-size: 14px; line-height: 1.65; padding: 16px 20px;
+  border: 1px solid var(--border); border-radius: 0 0 6px 6px; background: var(--surface);
+}
+.tl-doc-msg { color: var(--muted); margin: 0; }
 .tl-doc h1, .tl-doc h2, .tl-doc h3 { line-height: 1.3; margin: 1.6em 0 0.5em; }
 .tl-doc h1 { font-size: 24px; } .tl-doc h2 { font-size: 20px; } .tl-doc h3 { font-size: 17px; }
 .tl-doc p { margin: 0 0 0.9em; }
