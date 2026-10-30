@@ -1,4 +1,3 @@
-
 {
   "name": "react-starter",
   "private": true,
@@ -13,6 +12,7 @@
   },
   "dependencies": {
     "lucide-react": "^0.511.0",
+    "mammoth": "^1.13.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.0",

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import mammoth from "mammoth/mammoth.browser";
 
 /* ------------------------------------------------------------------
    Template data — add new templates to this array.
@@ -17,6 +18,9 @@ const TEMPLATES = [
       "Build a React (Node.js) project with npm and deploy the dist output to an Azure Web App using a publish profile.",
     tags: ["React", "Node 24", "Azure App Service"],
     secrets: ["DEVOPS_DEMO_AZURE_WEBAPP_PUBLISH_PROFILE"],
+    // File lives in /public/docs so Vite serves it at this URL
+    docUrl: "/docs/Azure_WebApp_CICD_GitHub_Actions_Guide.docx",
+    docTitle: "Azure Web App CI/CD with GitHub Actions — Guide",
     yaml: `name: Build and Deploy React App to Azure
 
 on:
@@ -108,7 +112,7 @@ function CloudIcon({ color = "#0969da" }) {
   );
 }
 
-function TemplateCard({ template, onConfigure }) {
+function TemplateCard({ template, onConfigure, onOpenDoc }) {
   const dot = CATEGORY_COLORS[template.category] || "#6e7781";
   return (
     <article className="tl-card">
@@ -126,10 +130,17 @@ function TemplateCard({ template, onConfigure }) {
         <button className="tl-btn" onClick={() => onConfigure(template)}>
           Configure
         </button>
-        <span className="tl-cat">
-          {template.category}
-          <span className="tl-dot" style={{ background: dot }} />
-        </span>
+        {template.docUrl ? (
+          <button className="tl-cat tl-doc-link" onClick={() => onOpenDoc(template)}>
+            Documentation
+            <span className="tl-dot" style={{ background: dot }} />
+          </button>
+        ) : (
+          <span className="tl-cat">
+            Documentation
+            <span className="tl-dot" style={{ background: "#8c959f" }} />
+          </span>
+        )}
       </div>
     </article>
   );
@@ -220,10 +231,75 @@ function TemplateDrawer({ template, onClose }) {
   );
 }
 
+function DocViewer({ template, onClose }) {
+  const [html, setHtml] = useState("");
+  const [status, setStatus] = useState("loading"); // loading | ready | error
+
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(template.docUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const arrayBuffer = await res.arrayBuffer();
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        if (!cancelled) {
+          setHtml(result.value);
+          setStatus("ready");
+        }
+      } catch (err) {
+        console.error("Could not load document:", err);
+        if (!cancelled) setStatus("error");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [template.docUrl]);
+
+  return (
+    <div className="tl-overlay" onClick={onClose}>
+      <aside
+        className="tl-drawer tl-drawer-wide"
+        role="dialog"
+        aria-modal="true"
+        aria-label={template.docTitle || template.title}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="tl-drawer-head">
+          <div>
+            <h2>{template.docTitle || template.title}</h2>
+            <p className="tl-card-by">Documentation · {template.provider}</p>
+          </div>
+          <div className="tl-code-actions">
+            <a className="tl-btn" href={template.docUrl} download>Download .docx</a>
+            <button className="tl-close" onClick={onClose} aria-label="Close">✕</button>
+          </div>
+        </header>
+
+        {status === "loading" && <p className="tl-empty">Loading document…</p>}
+        {status === "error" && (
+          <p className="tl-empty">
+            The document couldn’t be loaded. Check that it exists at <code>{template.docUrl}</code>.
+          </p>
+        )}
+        {status === "ready" && (
+          <div className="tl-doc" dangerouslySetInnerHTML={{ __html: html }} />
+        )}
+      </aside>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState(null);
+  const [docTemplate, setDocTemplate] = useState(null);
 
   const categories = useMemo(
     () => ["All", ...new Set(TEMPLATES.map((t) => t.category))],
@@ -296,7 +372,12 @@ export default function HomePage() {
             </div>
             <div className="tl-grid">
               {items.map((t) => (
-                <TemplateCard key={t.id} template={t} onConfigure={setSelected} />
+                <TemplateCard
+                  key={t.id}
+                  template={t}
+                  onConfigure={setSelected}
+                  onOpenDoc={setDocTemplate}
+                />
               ))}
             </div>
           </section>
@@ -304,6 +385,7 @@ export default function HomePage() {
       </main>
 
       {selected && <TemplateDrawer template={selected} onClose={() => setSelected(null)} />}
+      {docTemplate && <DocViewer template={docTemplate} onClose={() => setDocTemplate(null)} />}
     </div>
   );
 }
@@ -413,6 +495,27 @@ const CSS = `
   margin: 0; padding: 16px; font-size: 12.5px; line-height: 1.55; overflow-x: auto;
   background: var(--code-bg); border: 1px solid var(--border); border-radius: 0 0 6px 6px;
 }
+
+.tl-doc-link {
+  background: none; border: 0; padding: 4px 0; cursor: pointer; font: inherit;
+}
+.tl-doc-link:hover { color: var(--link); text-decoration: underline; }
+.tl-doc-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 4px; }
+a.tl-btn { text-decoration: none; display: inline-flex; align-items: center; }
+
+.tl-drawer-wide { width: min(900px, 100%); }
+.tl-doc { margin-top: 20px; font-size: 15px; line-height: 1.65; max-width: 75ch; }
+.tl-doc h1, .tl-doc h2, .tl-doc h3 { line-height: 1.3; margin: 1.6em 0 0.5em; }
+.tl-doc h1 { font-size: 24px; } .tl-doc h2 { font-size: 20px; } .tl-doc h3 { font-size: 17px; }
+.tl-doc p { margin: 0 0 0.9em; }
+.tl-doc ul, .tl-doc ol { padding-left: 22px; margin: 0 0 1em; }
+.tl-doc li { margin-bottom: 0.3em; }
+.tl-doc a { color: var(--link); }
+.tl-doc img { max-width: 100%; height: auto; }
+.tl-doc table { border-collapse: collapse; width: 100%; margin: 0 0 1em; font-size: 14px; display: block; overflow-x: auto; }
+.tl-doc th, .tl-doc td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+.tl-doc pre, .tl-doc code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.tl-doc pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; overflow-x: auto; }
 
 @media (max-width: 600px) {
   .tl-hero { padding-top: 32px; }
